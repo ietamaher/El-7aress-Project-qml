@@ -3,10 +3,12 @@
 
 #include <QObject>
 
+#include "models/menuviewmodel.h"
+
 class MainMenuController;
 class ReticleMenuController;
 class ColorMenuController;
-// Add other controllers as needed
+class MenuViewModel;
 
 class ApplicationController : public QObject
 {
@@ -61,8 +63,13 @@ private:
     void showMainMenu();
     void hideAllMenus();
     void setMenuState(MenuState state);
-    void connectMainMenu();
-    void disconnectMainMenu();
+
+    void connectMainMenuSignals();
+    void disconnectMainMenuSignals();
+    void connectReticleMenuSignals();
+    void disconnectReticleMenuSignals();
+    void connectColorMenuSignals();
+    void disconnectColorMenuSignals();
 
     MenuState m_currentMenuState;
 

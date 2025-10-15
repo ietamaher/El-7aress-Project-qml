@@ -3,6 +3,7 @@
 #include "controllers/reticlemenucontroller.h"
 #include "controllers/colormenucontroller.h"
 #include "services/servicemanager.h"
+#include "models/menuviewmodel.h"
 #include <QDebug>
 
 ApplicationController::ApplicationController(QObject *parent)
@@ -11,13 +12,16 @@ ApplicationController::ApplicationController(QObject *parent)
     , m_mainMenuController(nullptr)
     , m_reticleMenuController(nullptr)
     , m_colorMenuController(nullptr)
+    , m_viewModel(nullptr)
 {
 }
 
 void ApplicationController::initialize()
 {
     // Get controllers from ServiceManager
+    m_viewModel = ServiceManager::instance()->get<MenuViewModel>();
     m_mainMenuController = ServiceManager::instance()->get<MainMenuController>();
+    Q_ASSERT(m_viewModel);
     Q_ASSERT(m_mainMenuController);
 
     // You'll need to register these in ServiceManager too
@@ -47,7 +51,7 @@ void ApplicationController::showMainMenu()
     hideAllMenus();
     m_mainMenuController->show();
     setMenuState(MenuState::MainMenu);
-    connectMainMenu();
+    connectMainMenuSignals();
 }
 
 void ApplicationController::hideAllMenus()
@@ -58,7 +62,7 @@ void ApplicationController::hideAllMenus()
     // Hide other menus as needed
 }
 
-void ApplicationController::connectMainMenu()
+void ApplicationController::connectMainMenuSignals()
 {
     // Connect main menu signals
     connect(m_mainMenuController, &MainMenuController::personalizeReticleRequested,
@@ -85,7 +89,7 @@ void ApplicationController::connectMainMenu()
             this, &ApplicationController::handleHelpAbout);
 }
 
-void ApplicationController::disconnectMainMenu()
+void ApplicationController::disconnectMainMenuSignals()
 {
     // Disconnect main menu signals
     disconnect(m_mainMenuController, &MainMenuController::personalizeReticleRequested,
@@ -220,29 +224,21 @@ void ApplicationController::onBackButtonPressed()
 void ApplicationController::handlePersonalizeReticle()
 {
     qDebug() << "ApplicationController: Showing Reticle Menu";
-    disconnectMainMenu();
+    disconnectMainMenuSignals();
     hideAllMenus();
     m_reticleMenuController->show();
     setMenuState(MenuState::ReticleMenu);
-
-    connect(m_reticleMenuController, &ReticleMenuController::returnToMainMenu,
-            this, &ApplicationController::handleReturnToMainMenu);
-    connect(m_reticleMenuController, &ReticleMenuController::menuFinished,
-            this, &ApplicationController::handleReticleMenuFinished);
+    connectReticleMenuSignals();
 }
 
 void ApplicationController::handlePersonalizeColors()
 {
     qDebug() << "ApplicationController: Showing Color Menu";
-    disconnectMainMenu();
+    disconnectMainMenuSignals();
     hideAllMenus();
     m_colorMenuController->show();
     setMenuState(MenuState::ColorMenu);
-
-    connect(m_colorMenuController, &ColorMenuController::returnToMainMenu,
-            this, &ApplicationController::handleReturnToMainMenu);
-    connect(m_colorMenuController, &ColorMenuController::menuFinished,
-            this, &ApplicationController::handleColorMenuFinished);
+    connectColorMenuSignals();
 }
 
 void ApplicationController::handleAdjustBrightness()
@@ -351,15 +347,40 @@ void ApplicationController::handleColorMenuFinished()
 void ApplicationController::handleReturnToMainMenu()
 {
     qDebug() << "ApplicationController: Returning to main menu";
-    disconnect(m_reticleMenuController, &ReticleMenuController::returnToMainMenu,
-               this, &ApplicationController::handleReturnToMainMenu);
-    disconnect(m_reticleMenuController, &ReticleMenuController::menuFinished,
-               this, &ApplicationController::handleReticleMenuFinished);
-    disconnect(m_colorMenuController, &ColorMenuController::returnToMainMenu,
-               this, &ApplicationController::handleReturnToMainMenu);
-    disconnect(m_colorMenuController, &ColorMenuController::menuFinished,
-               this, &ApplicationController::handleColorMenuFinished);
-
+    disconnectReticleMenuSignals();
+    disconnectColorMenuSignals();
     hideAllMenus();
     showMainMenu();
+}
+
+void ApplicationController::connectReticleMenuSignals()
+{
+    connect(m_viewModel, &MenuViewModel::optionSelected,
+            m_reticleMenuController, &ReticleMenuController::handleMenuOptionSelected);
+    connect(m_reticleMenuController, &ReticleMenuController::returnToMainMenu,
+            this, &ApplicationController::handleReturnToMainMenu);
+}
+
+void ApplicationController::disconnectReticleMenuSignals()
+{
+    disconnect(m_viewModel, &MenuViewModel::optionSelected,
+               m_reticleMenuController, &ReticleMenuController::handleMenuOptionSelected);
+    disconnect(m_reticleMenuController, &ReticleMenuController::returnToMainMenu,
+               this, &ApplicationController::handleReturnToMainMenu);
+}
+
+void ApplicationController::connectColorMenuSignals()
+{
+    connect(m_viewModel, &MenuViewModel::optionSelected,
+            m_colorMenuController, &ColorMenuController::handleMenuOptionSelected);
+    connect(m_colorMenuController, &ColorMenuController::returnToMainMenu,
+            this, &ApplicationController::handleReturnToMainMenu);
+}
+
+void ApplicationController::disconnectColorMenuSignals()
+{
+    disconnect(m_viewModel, &MenuViewModel::optionSelected,
+               m_colorMenuController, &ColorMenuController::handleMenuOptionSelected);
+    disconnect(m_colorMenuController, &ColorMenuController::returnToMainMenu,
+               this, &ApplicationController::handleReturnToMainMenu);
 }
