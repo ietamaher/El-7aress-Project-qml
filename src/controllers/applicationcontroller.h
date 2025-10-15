@@ -77,6 +77,7 @@ private:
     MainMenuController* m_mainMenuController;
     ReticleMenuController* m_reticleMenuController;
     ColorMenuController* m_colorMenuController;
+    MenuViewModel* m_viewModel;
     // Add other controllers as needed
 };
 

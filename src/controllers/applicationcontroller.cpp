@@ -65,6 +65,8 @@ void ApplicationController::hideAllMenus()
 void ApplicationController::connectMainMenuSignals()
 {
     // Connect main menu signals
+    connect(m_viewModel, &MenuViewModel::optionSelected,
+            m_mainMenuController, &MainMenuController::handleMenuOptionSelected);
     connect(m_mainMenuController, &MainMenuController::personalizeReticleRequested,
             this, &ApplicationController::handlePersonalizeReticle);
     connect(m_mainMenuController, &MainMenuController::personalizeColorsRequested,
@@ -359,6 +361,8 @@ void ApplicationController::connectReticleMenuSignals()
             m_reticleMenuController, &ReticleMenuController::handleMenuOptionSelected);
     connect(m_reticleMenuController, &ReticleMenuController::returnToMainMenu,
             this, &ApplicationController::handleReturnToMainMenu);
+    connect(m_reticleMenuController, &ReticleMenuController::menuFinished,
+            this, &ApplicationController::handleReticleMenuFinished);
 }
 
 void ApplicationController::disconnectReticleMenuSignals()
@@ -367,6 +371,8 @@ void ApplicationController::disconnectReticleMenuSignals()
                m_reticleMenuController, &ReticleMenuController::handleMenuOptionSelected);
     disconnect(m_reticleMenuController, &ReticleMenuController::returnToMainMenu,
                this, &ApplicationController::handleReturnToMainMenu);
+    disconnect(m_reticleMenuController, &ReticleMenuController::menuFinished,
+               this, &ApplicationController::handleReticleMenuFinished);
 }
 
 void ApplicationController::connectColorMenuSignals()
@@ -375,6 +381,8 @@ void ApplicationController::connectColorMenuSignals()
             m_colorMenuController, &ColorMenuController::handleMenuOptionSelected);
     connect(m_colorMenuController, &ColorMenuController::returnToMainMenu,
             this, &ApplicationController::handleReturnToMainMenu);
+    connect(m_colorMenuController, &ColorMenuController::menuFinished,
+            this, &ApplicationController::handleColorMenuFinished);
 }
 
 void ApplicationController::disconnectColorMenuSignals()
@@ -383,4 +391,6 @@ void ApplicationController::disconnectColorMenuSignals()
                m_colorMenuController, &ColorMenuController::handleMenuOptionSelected);
     disconnect(m_colorMenuController, &ColorMenuController::returnToMainMenu,
                this, &ApplicationController::handleReturnToMainMenu);
+    disconnect(m_colorMenuController, &ColorMenuController::menuFinished,
+               this, &ApplicationController::handleColorMenuFinished);
 }
