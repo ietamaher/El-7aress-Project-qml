@@ -18,9 +18,6 @@ void ColorMenuController::initialize()
 
     Q_ASSERT(m_viewModel);
     Q_ASSERT(m_osdViewModel);
-
-    connect(m_viewModel, &MenuViewModel::optionSelected,
-            this, &ColorMenuController::handleMenuOptionSelected);
 }
 
 QStringList ColorMenuController::buildColorOptions() const

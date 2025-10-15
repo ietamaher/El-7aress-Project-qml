@@ -18,9 +18,6 @@ void ReticleMenuController::initialize()
 
     Q_ASSERT(m_viewModel);
     Q_ASSERT(m_osdViewModel);
-
-    connect(m_viewModel, &MenuViewModel::optionSelected,
-            this, &ReticleMenuController::handleMenuOptionSelected);
 }
 
 QStringList ReticleMenuController::buildReticleOptions() const

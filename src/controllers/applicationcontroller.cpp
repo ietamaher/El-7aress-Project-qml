@@ -34,7 +34,32 @@ void ApplicationController::initialize()
         m_colorMenuController = new ColorMenuController(this);
         m_colorMenuController->initialize();
     }
+}
 
+void ApplicationController::setMenuState(MenuState state)
+{
+    m_currentMenuState = state;
+    qDebug() << "ApplicationController: Menu state changed to" << static_cast<int>(state);
+}
+
+void ApplicationController::showMainMenu()
+{
+    hideAllMenus();
+    m_mainMenuController->show();
+    setMenuState(MenuState::MainMenu);
+    connectMainMenu();
+}
+
+void ApplicationController::hideAllMenus()
+{
+    m_mainMenuController->hide();
+    m_reticleMenuController->hide();
+    m_colorMenuController->hide();
+    // Hide other menus as needed
+}
+
+void ApplicationController::connectMainMenu()
+{
     // Connect main menu signals
     connect(m_mainMenuController, &MainMenuController::personalizeReticleRequested,
             this, &ApplicationController::handlePersonalizeReticle);
@@ -58,38 +83,33 @@ void ApplicationController::initialize()
             this, &ApplicationController::handleRadarTargetList);
     connect(m_mainMenuController, &MainMenuController::helpAboutRequested,
             this, &ApplicationController::handleHelpAbout);
-
-    // Connect submenu signals
-    connect(m_reticleMenuController, &ReticleMenuController::returnToMainMenu,
-            this, &ApplicationController::handleReturnToMainMenu);
-    connect(m_reticleMenuController, &ReticleMenuController::menuFinished,
-            this, &ApplicationController::handleReticleMenuFinished);
-
-    connect(m_colorMenuController, &ColorMenuController::returnToMainMenu,
-            this, &ApplicationController::handleReturnToMainMenu);
-    connect(m_colorMenuController, &ColorMenuController::menuFinished,
-            this, &ApplicationController::handleColorMenuFinished);
 }
 
-void ApplicationController::setMenuState(MenuState state)
+void ApplicationController::disconnectMainMenu()
 {
-    m_currentMenuState = state;
-    qDebug() << "ApplicationController: Menu state changed to" << static_cast<int>(state);
-}
-
-void ApplicationController::showMainMenu()
-{
-    hideAllMenus();
-    m_mainMenuController->show();
-    setMenuState(MenuState::MainMenu);
-}
-
-void ApplicationController::hideAllMenus()
-{
-    m_mainMenuController->hide();
-    m_reticleMenuController->hide();
-    m_colorMenuController->hide();
-    // Hide other menus as needed
+    // Disconnect main menu signals
+    disconnect(m_mainMenuController, &MainMenuController::personalizeReticleRequested,
+               this, &ApplicationController::handlePersonalizeReticle);
+    disconnect(m_mainMenuController, &MainMenuController::personalizeColorsRequested,
+               this, &ApplicationController::handlePersonalizeColors);
+    disconnect(m_mainMenuController, &MainMenuController::adjustBrightnessRequested,
+               this, &ApplicationController::handleAdjustBrightness);
+    disconnect(m_mainMenuController, &MainMenuController::zeroingRequested,
+               this, &ApplicationController::handleZeroing);
+    disconnect(m_mainMenuController, &MainMenuController::clearZeroRequested,
+               this, &ApplicationController::handleClearZero);
+    disconnect(m_mainMenuController, &MainMenuController::windageRequested,
+               this, &ApplicationController::handleWindage);
+    disconnect(m_mainMenuController, &MainMenuController::clearWindageRequested,
+               this, &ApplicationController::handleClearWindage);
+    disconnect(m_mainMenuController, &MainMenuController::zoneDefinitionsRequested,
+               this, &ApplicationController::handleZoneDefinitions);
+    disconnect(m_mainMenuController, &MainMenuController::systemStatusRequested,
+               this, &ApplicationController::handleSystemStatus);
+    disconnect(m_mainMenuController, &MainMenuController::radarTargetListRequested,
+               this, &ApplicationController::handleRadarTargetList);
+    disconnect(m_mainMenuController, &MainMenuController::helpAboutRequested,
+               this, &ApplicationController::handleHelpAbout);
 }
 
 void ApplicationController::onMenuButtonPressed()
@@ -200,17 +220,29 @@ void ApplicationController::onBackButtonPressed()
 void ApplicationController::handlePersonalizeReticle()
 {
     qDebug() << "ApplicationController: Showing Reticle Menu";
+    disconnectMainMenu();
     hideAllMenus();
     m_reticleMenuController->show();
     setMenuState(MenuState::ReticleMenu);
+
+    connect(m_reticleMenuController, &ReticleMenuController::returnToMainMenu,
+            this, &ApplicationController::handleReturnToMainMenu);
+    connect(m_reticleMenuController, &ReticleMenuController::menuFinished,
+            this, &ApplicationController::handleReticleMenuFinished);
 }
 
 void ApplicationController::handlePersonalizeColors()
 {
     qDebug() << "ApplicationController: Showing Color Menu";
+    disconnectMainMenu();
     hideAllMenus();
     m_colorMenuController->show();
     setMenuState(MenuState::ColorMenu);
+
+    connect(m_colorMenuController, &ColorMenuController::returnToMainMenu,
+            this, &ApplicationController::handleReturnToMainMenu);
+    connect(m_colorMenuController, &ColorMenuController::menuFinished,
+            this, &ApplicationController::handleColorMenuFinished);
 }
 
 void ApplicationController::handleAdjustBrightness()
@@ -319,6 +351,15 @@ void ApplicationController::handleColorMenuFinished()
 void ApplicationController::handleReturnToMainMenu()
 {
     qDebug() << "ApplicationController: Returning to main menu";
+    disconnect(m_reticleMenuController, &ReticleMenuController::returnToMainMenu,
+               this, &ApplicationController::handleReturnToMainMenu);
+    disconnect(m_reticleMenuController, &ReticleMenuController::menuFinished,
+               this, &ApplicationController::handleReticleMenuFinished);
+    disconnect(m_colorMenuController, &ColorMenuController::returnToMainMenu,
+               this, &ApplicationController::handleReturnToMainMenu);
+    disconnect(m_colorMenuController, &ColorMenuController::menuFinished,
+               this, &ApplicationController::handleColorMenuFinished);
+
     hideAllMenus();
     showMainMenu();
 }

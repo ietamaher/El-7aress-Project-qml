@@ -61,6 +61,8 @@ private:
     void showMainMenu();
     void hideAllMenus();
     void setMenuState(MenuState state);
+    void connectMainMenu();
+    void disconnectMainMenu();
 
     MenuState m_currentMenuState;
 

@@ -13,9 +13,6 @@ void MainMenuController::initialize()
 {
     m_viewModel = ServiceManager::instance()->get<MenuViewModel>();
     Q_ASSERT(m_viewModel);
-
-    connect(m_viewModel, &MenuViewModel::optionSelected,
-            this, &MainMenuController::handleMenuOptionSelected);
 }
 
 QStringList MainMenuController::buildMainMenuOptions() const

@@ -1,110 +1,50 @@
-# Qt6/QML Project Refactoring Report
+# Qt6/QML Project Structure
 
-This document outlines the reorganization of the repository into a structured Qt6/QML project.
+This document outlines the structure of the Qt6/QML GStreamer application.
 
-## New Project Structure
+## Project Layout
 
-The project has been reorganized into the following directory structure:
+The repository is organized into the following directories:
 
 ```
 .
-├── QT6-gstreamer-example.pro
-├── agent.md
-├── qml
-│   ├── components
-│   │   └── OsdOverlay.qml
-│   └── views
-│       ├── MainMenu.qml
-│       ├── Menu.qml
-│       └── main.qml
-├── resources
-│   └── resources.qrc
-└── src
-    ├── controllers
-    │   ├── applicationcontroller.cpp
-    │   ├── applicationcontroller.h
-    │   ├── colormenucontroller.cpp
-    │   ├── colormenucontroller.h
-    │   ├── mainmenucontroller.cpp
-    │   ├── mainmenucontroller.h
-    │   ├── reticlemenucontroller.cpp
-    │   └── reticlemenucontroller.h
-    ├── main.cpp
-    ├── models
-    │   ├── menuviewmodel.cpp
-    │   ├── menuviewmodel.h
-    │   ├── osdviewmodel.cpp
-    │   └── osdviewmodel.h
-    ├── services
-    │   ├── servicemanager.cpp
-    │   └── servicemanager.h
-    └── video
-        ├── gstvideosource.cpp
-        ├── gstvideosource.h
-        ├── videoimageprovider.cpp
-        └── videoimageprovider.h
+├── QT6-gstreamer-example.pro  # qmake project file
+├── qml/                         # QML source files
+│   ├── components/              # Reusable QML components
+│   └── views/                   # Application views or screens
+├── resources/                   # Resource files (e.g., .qrc)
+└── src/                         # C++ source code
+    ├── controllers/             # Application logic and flow control
+    ├── models/                  # Data models and view models
+    ├── services/                # Singleton services (e.g., ServiceManager)
+    └── video/                   # GStreamer video integration
 ```
 
-## Rationale for Reorganization
+## C++ Backend (`src/`)
 
-The project was reorganized to follow Qt/QML best practices, improving maintainability, scalability, and developer onboarding. The key principles were:
+The C++ source code is located in the `src/` directory and is organized by function:
 
-*   **Separation of Concerns:** C++ backend code (`src`), QML frontend code (`qml`), and resource files (`resources`) are now in distinct top-level directories.
-*   **Domain-Driven C++ Structure:** The `src` directory is further divided by functionality (`controllers`, `models`, `services`, `video`), making it easier to locate and understand specific parts of the C++ codebase.
-*   **Component-Based QML Structure:** The `qml` directory separates reusable UI controls (`components`) from application screens (`views`). This encourages modularity and code reuse.
+-   **`controllers/`**: Contains classes that manage application logic, user input, and view transitions. The `ApplicationController` is the main controller, orchestrating the interactions between the other controllers.
+-   **`models/`**: Holds data models and view models that expose data and state to the QML frontend. This includes `MenuViewModel` for managing menu state and `OsdViewModel` for the on-screen display.
+-   **`services/`**: Provides singleton services that are available throughout the application. The `ServiceManager` is a central point for accessing shared services.
+-   **`video/`**: Includes the GStreamer integration code, such as the `GstVideoSource` and `VideoImageProvider`, which are responsible for capturing and displaying the video feed.
 
-## File Mappings
+## QML Frontend (`qml/`)
 
-The following table maps the original file locations to their new locations:
+The QML user interface is in the `qml/` directory, which is divided into:
 
-| Old Path                      | New Path                                  |
-| ----------------------------- | ----------------------------------------- |
-| `applicationcontroller.cpp`   | `src/controllers/applicationcontroller.cpp` |
-| `applicationcontroller.h`     | `src/controllers/applicationcontroller.h`   |
-| `colormenucontroller.cpp`     | `src/controllers/colormenucontroller.cpp`   |
-| `colormenucontroller.h`       | `src/controllers/colormenucontroller.h`     |
-| `mainmenucontroller.cpp`      | `src/controllers/mainmenucontroller.cpp`    |
-| `mainmenucontroller.h`        | `src/controllers/mainmenucontroller.h`      |
-| `reticlemenucontroller.cpp`   | `src/controllers/reticlemenucontroller.cpp` |
-| `reticlemenucontroller.h`     | `src/controllers/reticlemenucontroller.h`   |
-| `menuviewmodel.cpp`           | `src/models/menuviewmodel.cpp`              |
-| `menuviewmodel.h`             | `src/models/menuviewmodel.h`                |
-| `osdviewmodel.cpp`            | `src/models/osdviewmodel.cpp`               |
-| `osdviewmodel.h`              | `src/models/osdviewmodel.h`                 |
-| `servicemanager.cpp`          | `src/services/servicemanager.cpp`           |
-| `servicemanager.h`            | `src/services/servicemanager.h`             |
-| `gstvideosource.cpp`          | `src/video/gstvideosource.cpp`              |
-| `gstvideosource.h`            | `src/video/gstvideosource.h`                |
-| `videoimageprovider.cpp`      | `src/video/videoimageprovider.cpp`          |
-| `videoimageprovider.h`        | `src/video/videoimageprovider.h`            |
-| `main.cpp`                    | `src/main.cpp`                            |
-| `qml/main.qml`                | `qml/views/main.qml`                      |
-| `qml/MainMenu.qml`            | `qml/views/MainMenu.qml`                  |
-| `qml/Menu.qml`                | `qml/views/Menu.qml`                      |
-| `qml/OsdOverlay.qml`          | `qml/components/OsdOverlay.qml`           |
-| `resources.qrc`               | `resources/resources.qrc`                 |
+-   **`components/`**: Reusable QML components, such as `OsdOverlay.qml`, that can be used across multiple views.
+-   **`views/`**: Application screens or views, such as `main.qml` and `MainMenu.qml`.
 
-## Build and Runtime Changes
+## Build System (`.pro` file)
 
-### Build System (`.pro` file)
+The project uses `qmake` as its build system. The `QT6-gstreamer-example.pro` file defines the project's configuration, including:
 
-*   **`QT6-gstreamer-example.pro`:**
-    *   The `SOURCES` and `HEADERS` variables were updated with the new paths for all C++ files (e.g., `src/controllers/applicationcontroller.cpp`).
-    *   The `RESOURCES` variable was updated to `resources/resources.qrc`.
-    *   `QML_IMPORT_PATH` was set to `qml` to help Qt Creator's code model resolve QML imports.
+-   The C++ source and header files.
+-   The QML files to be included in the application's resources.
+-   The Qt modules to be linked against.
+-   The GStreamer libraries and include paths.
 
-### Resources (`.qrc` file)
+## Resources (`.qrc` file)
 
-*   **`resources/resources.qrc`:**
-    *   The resource `prefix` was changed from `/` to `/qml` for better namespacing.
-    *   File paths were updated to reflect the new `qml/views` and `qml/components` structure (e.g., `../qml/views/main.qml`).
-    *   A missing entry for `Menu.qml` was added.
-
-### Runtime Code
-
-*   **`src/main.cpp`:**
-    *   The QML engine loading path was changed from `qrc:/qml/main.qml` to `qrc:/qml/views/main.qml` to match the new resource path.
-    *   All `#include` statements were updated to use relative paths to the new header locations (e.g., `#include "controllers/applicationcontroller.h"`).
-*   **Other C++ Files:** All `#include` statements were updated to use relative paths (e.g., `../services/servicemanager.h` from within a controller).
-*   **`qml/views/main.qml`:**
-    *   Import statements were added for the `components` and `views` directories to make dependencies explicit: `import "qrc:/qml/components"` and `import "qrc:/qml/views"`.
+The `resources/resources.qrc` file is a Qt resource file that bundles the QML files into the application's binary. This allows the QML files to be accessed at runtime using the `qrc:/` scheme.
