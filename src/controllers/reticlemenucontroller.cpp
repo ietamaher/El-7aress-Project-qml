@@ -1,6 +1,7 @@
 #include "controllers/reticlemenucontroller.h"
 #include "services/servicemanager.h"
 #include "models/osdviewmodel.h"
+#include "models/domain/systemstatemodel.h"
 #include <QDebug>
 
 ReticleMenuController::ReticleMenuController(QObject *parent)
@@ -22,6 +23,17 @@ void ReticleMenuController::initialize()
 
     connect(m_viewModel, &MenuViewModel::optionSelected,
             this, &ReticleMenuController::handleMenuOptionSelected);
+
+    m_stateModel = ServiceManager::instance()->get<SystemStateModel>();
+    if (m_stateModel) {
+        // Connect to color changes
+        connect(m_stateModel, &SystemStateModel::colorStyleChanged,
+                this, &ReticleMenuController::onColorStyleChanged);
+
+        // Set initial color
+        const auto& data = m_stateModel->data();
+        m_viewModel->setAccentColor(data.colorStyle);
+    }
 }
 
 QStringList ReticleMenuController::buildReticleOptions() const
@@ -120,7 +132,7 @@ void ReticleMenuController::handleCurrentItemChanged(int index)
         ReticleType previewType = stringToReticleType(optionText);
 
         // Update OSD with preview
-        // m_osdViewModel->setReticleType(previewType);
+        m_stateModel->setReticleStyle(previewType);
 
         qDebug() << "ReticleMenuController: Previewing" << optionText;
     }
@@ -134,17 +146,25 @@ void ReticleMenuController::handleMenuOptionSelected(const QString& option)
 
     if (option == "Return ...") {
         // Restore original
-        // m_osdViewModel->setReticleType(m_originalReticleType);
+        m_stateModel->setReticleStyle(m_originalReticleType);
         emit returnToMainMenu();
     } else {
         // Apply the selected reticle permanently
         ReticleType selectedType = stringToReticleType(option);
-        // m_osdViewModel->setReticleType(selectedType);
-        // m_osdViewModel->saveReticleType(); // Persist to settings
+        m_stateModel->setReticleStyle(selectedType);
+        //m_osdViewModel->saveReticleType(); // Persist to settings
 
         qDebug() << "ReticleMenuController: Applied" << option;
         emit returnToMainMenu();
     }
 
     emit menuFinished();
+}
+
+void ReticleMenuController::onColorStyleChanged(const QColor& color)
+{
+    qDebug() << "ReticleMenuController: Color changed to" << color;
+    if (m_viewModel) {
+        m_viewModel->setAccentColor(color);
+    }
 }
