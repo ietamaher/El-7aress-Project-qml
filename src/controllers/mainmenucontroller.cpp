@@ -1,29 +1,32 @@
 #include "controllers/mainmenucontroller.h"
 #include "services/servicemanager.h"
 #include "models/menuviewmodel.h"
+#include "models/osdviewmodel.h"
 #include "models/domain/systemstatemodel.h"
 #include <QDebug>
 
 MainMenuController::MainMenuController(QObject *parent)
     : QObject(parent)
     , m_viewModel(nullptr)
+    , m_stateModel(nullptr)
 {
 }
 
 void MainMenuController::initialize()
 {
-    m_viewModel = ServiceManager::instance()->get<MenuViewModel>(QString("MainMenuViewModel"));
+    //m_viewModel = ServiceManager::instance()->get<MenuViewModel>(QString("MainMenuViewModel"));
     Q_ASSERT(m_viewModel);
+    Q_ASSERT(m_stateModel);
 
     connect(m_viewModel, &MenuViewModel::optionSelected,
             this, &MainMenuController::handleMenuOptionSelected);
-    SystemStateModel* stateModel = ServiceManager::instance()->get<SystemStateModel>();
-    if (stateModel) {
-        connect(stateModel, &SystemStateModel::colorStyleChanged,
+    //SystemStateModel* stateModel = ServiceManager::instance()->get<SystemStateModel>();
+    if (m_stateModel) {
+        connect(m_stateModel, &SystemStateModel::colorStyleChanged,
                 this, &MainMenuController::onColorStyleChanged);
         
         // Set initial color
-        const auto& data = stateModel->data();
+        const auto& data = m_stateModel->data();
         m_viewModel->setAccentColor(data.colorStyle);
     }
 }
@@ -43,7 +46,6 @@ QStringList MainMenuController::buildMainMenuOptions() const
             << "--- SYSTEM ---"
             << "Zone Definitions"
             << "System Status"
-            << "Radar Target List"
             << "--- INFO ---"
             << "Help/About"
             << "Return ...";
@@ -121,15 +123,15 @@ void MainMenuController::handleMenuOptionSelected(const QString& option)
     }
     else if (option == "System Status") {
         emit systemStatusRequested();
-        emit menuFinished();
+       // emit menuFinished();
     }
     else if (option == "Radar Target List") {
         emit radarTargetListRequested();
-        emit menuFinished();
+        //emit menuFinished();
     }
     else if (option == "Help/About") {
         emit helpAboutRequested();
-        emit menuFinished();
+        // menuFinished();
     }
     else if (option == "Return ...") {
         qDebug() << "MainMenuController: Return option selected - closing menu";
@@ -145,3 +147,14 @@ void MainMenuController::onColorStyleChanged(const QColor& color)
     qDebug() << "MainMenuController: Color changed to" << color;
     m_viewModel->setAccentColor(color);
 }
+
+void MainMenuController::setViewModel(MenuViewModel* viewModel)
+{
+    m_viewModel = viewModel;
+}
+
+void MainMenuController::setStateModel(SystemStateModel* stateModel)
+{
+    m_stateModel = stateModel;
+}
+

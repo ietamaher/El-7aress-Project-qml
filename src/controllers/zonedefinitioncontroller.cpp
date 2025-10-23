@@ -32,12 +32,12 @@ ZoneDefinitionController::ZoneDefinitionController(QObject *parent)
 void ZoneDefinitionController::initialize()
 {
     // Get ViewModels from ServiceManager
-    m_viewModel = ServiceManager::instance()->get<ZoneDefinitionViewModel>();
+    /*m_viewModel = ServiceManager::instance()->get<ZoneDefinitionViewModel>();
     m_mapViewModel = ServiceManager::instance()->get<ZoneMapViewModel>();
     m_areaZoneParamViewModel = ServiceManager::instance()->get<AreaZoneParameterViewModel>();
     m_sectorScanParamViewModel = ServiceManager::instance()->get<SectorScanParameterViewModel>();
     m_trpParamViewModel = ServiceManager::instance()->get<TRPParameterViewModel>();
-
+*/
     Q_ASSERT(m_viewModel);
     Q_ASSERT(m_mapViewModel);
     Q_ASSERT(m_areaZoneParamViewModel);
@@ -45,7 +45,7 @@ void ZoneDefinitionController::initialize()
     Q_ASSERT(m_trpParamViewModel);
 
     // Get SystemStateModel
-    m_stateModel = ServiceManager::instance()->get<SystemStateModel>();
+    //m_stateModel = ServiceManager::instance()->get<SystemStateModel>();
     Q_ASSERT(m_stateModel);
 
     // Connect to model signals
@@ -1537,3 +1537,26 @@ void ZoneDefinitionController::updateMapWipZone()
     m_mapViewModel->setWipZone(wipData, wipType, isDefiningStart, isDefiningEnd);
 }
 
+// ============================================================================
+// DEPENDENCY INJECTION SETTERS
+// ============================================================================ 
+void ZoneDefinitionController::setViewModel(ZoneDefinitionViewModel* viewModel)
+{
+    m_viewModel = viewModel;
+}
+void ZoneDefinitionController::setParameterViewModels(AreaZoneParameterViewModel* areaVM,
+                                                      SectorScanParameterViewModel* sectorVM,
+                                                      TRPParameterViewModel* trpVM)
+{
+    m_areaZoneParamViewModel = areaVM;
+    m_sectorScanParamViewModel = sectorVM;
+    m_trpParamViewModel = trpVM;
+}
+void ZoneDefinitionController::setMapViewModel(ZoneMapViewModel* mapViewModel)
+{
+    m_mapViewModel = mapViewModel;
+}
+void ZoneDefinitionController::setStateModel(SystemStateModel* stateModel)
+{
+    m_stateModel = stateModel;
+}

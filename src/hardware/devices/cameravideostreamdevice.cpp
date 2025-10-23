@@ -6,6 +6,8 @@
 #include <stdexcept>
 
 #include <opencv2/imgcodecs.hpp>
+#include <cuda_runtime.h>
+
 
 CameraVideoStreamDevice::CameraVideoStreamDevice(int cameraIndex,
                                const QString &deviceName,
@@ -318,6 +320,10 @@ void CameraVideoStreamDevice::onSystemStateChanged(const SystemStateData &newSta
     m_currentAcquisitionBoxY_px = newState.acquisitionBoxY_px;
     m_currentAcquisitionBoxW_px = newState.acquisitionBoxW_px;
     m_currentAcquisitionBoxH_px = newState.acquisitionBoxH_px;
+
+    m_currentLeadAngleStatus = newState.currentLeadAngleStatus;  // ⭐ ADD
+    m_currentLeadAngleOffsetAz = newState.leadAngleOffsetAz;     // ⭐ ADD
+    m_currentLeadAngleOffsetEl = newState.leadAngleOffsetEl;
 }
 
 
@@ -340,7 +346,7 @@ bool CameraVideoStreamDevice::initializeGStreamer()
                               "appsink name=mysink emit-signals=true max-buffers=2 drop=true sync=false"
                               ).arg(m_deviceName).arg(m_sourceWidth).arg(m_sourceHeight);*/
 
-    QString pipelineStr = QString("v4l2src device=%1 do-timestamp=true ! "
+    /*QString pipelineStr = QString("v4l2src device=%1 do-timestamp=true ! "
         "video/x-raw,format=YUY2,width=%2,height=%3,framerate=30/1 ! "
         "videocrop top=%4 left= %6 bottom=%5  right=%7 ! "
         "videoscale ! "
@@ -354,8 +360,8 @@ bool CameraVideoStreamDevice::initializeGStreamer()
         .arg(m_cropBottom)
         .arg(m_cropLeft)
         .arg(m_cropRight);
-
-    /*QString pipelineStr = QString(
+*/
+    QString pipelineStr = QString(
                               "v4l2src device=%1 do-timestamp=true ! "
                               "image/jpeg,width=%2,height=%3,framerate=30/1 ! jpegdec ! video/x-raw ! "
                               "aspectratiocrop aspect-ratio=4/3 ! "
@@ -364,7 +370,7 @@ bool CameraVideoStreamDevice::initializeGStreamer()
                               "videoconvert ! video/x-raw,format=YUY2 ! " // Explicit conversion
                               "queue max-size-buffers=2 leaky=downstream ! "
                               "appsink name=mysink emit-signals=true max-buffers=2 drop=true sync=false"
-                              ).arg(m_deviceName).arg(m_sourceWidth).arg(m_sourceHeight);*/
+                              ).arg(m_deviceName).arg(m_sourceWidth).arg(m_sourceHeight);
 
     qInfo() << "Cam" << m_cameraIndex << " GStreamer Pipeline:" << pipelineStr;
     GError *error = nullptr;
@@ -477,6 +483,30 @@ GstFlowReturn CameraVideoStreamDevice::handleNewSample(GstAppSink *sink)
 // --- VPI Handling --- (No changes needed based on errors)
 bool CameraVideoStreamDevice::initializeVPI()
 {
+    // CUDA device check and reset before VPI initialization
+    cudaError_t cudaStatus = cudaSetDevice(0);
+    if (cudaStatus != cudaSuccess) {
+        qWarning() << "Cam" << m_cameraIndex << ": CUDA device unavailable:"
+                   << cudaGetErrorString(cudaStatus);
+
+        // Try to reset the device
+        cudaStatus = cudaDeviceReset();
+        if (cudaStatus != cudaSuccess) {
+            qCritical() << "Cam" << m_cameraIndex << ": Failed to reset CUDA device:"
+                        << cudaGetErrorString(cudaStatus);
+            return false;
+        }
+
+        // Retry setting device
+        cudaStatus = cudaSetDevice(0);
+        if (cudaStatus != cudaSuccess) {
+            qCritical() << "Cam" << m_cameraIndex << ": CUDA device still unavailable after reset";
+            return false;
+        }
+    }
+
+    qInfo() << "Cam" << m_cameraIndex << ": CUDA device initialized successfully";
+
     try {
         CHECK_VPI_STATUS(vpiStreamCreate(0, &m_vpiStream));
         CHECK_VPI_STATUS(vpiImageCreate(m_outputWidth, m_outputHeight, VPI_IMAGE_FORMAT_NV12_ER, 0, &m_vpiFrameNV12));
@@ -517,7 +547,15 @@ void CameraVideoStreamDevice::cleanupVPI()
     VPI_SAFE_DESTROY(vpiPayloadDestroy, m_cropScalePayload);
     VPI_SAFE_DESTROY(vpiImageDestroy, m_vpiFrameNV12);
     VPI_SAFE_DESTROY(vpiStreamDestroy, m_vpiStream);
-    VPI_SAFE_DESTROY(vpiArrayDestroy, m_vpiConfidenceScores); 
+    VPI_SAFE_DESTROY(vpiArrayDestroy, m_vpiConfidenceScores);
+
+    // CUDA context cleanup
+    cudaError_t cudaStatus = cudaDeviceSynchronize();
+    if (cudaStatus != cudaSuccess) {
+        qWarning() << "Cam" << m_cameraIndex << ": CUDA sync failed:"
+                   << cudaGetErrorString(cudaStatus);
+    }
+
     qInfo() << "Cam" << m_cameraIndex << ": Finished cleaning VPI objects.";
 }
 
@@ -781,6 +819,9 @@ bool CameraVideoStreamDevice::processFrame(GstBuffer *buffer)
         data.acquisitionBoxW_px = m_currentAcquisitionBoxW_px  ;
         data.acquisitionBoxH_px = m_currentAcquisitionBoxH_px  ;
         data.trackerHasValidTarget = true;
+        data.leadAngleStatus = m_currentLeadAngleStatus;           // ⭐ ADD
+        data.leadAngleOffsetAz_deg = m_currentLeadAngleOffsetAz;  // ⭐ ADD
+        data.leadAngleOffsetEl_deg = m_currentLeadAngleOffsetEl;  // ⭐ ADD
         // 7. Emit FrameData
         if (!data.baseImage.isNull()) emit frameDataReady(data);
 
@@ -980,34 +1021,35 @@ bool CameraVideoStreamDevice::runTrackingCycle(VPIImage vpiFrameInput)
 
 
 // --- Helper Functions --- (No changes needed based on errors)
-QImage CameraVideoStreamDevice::cvMatToQImage(const cv::Mat &inMat)
+QImage CameraVideoStreamDevice::cvMatToQImage(const cv::Mat &mat)
 {
-    switch (inMat.type()) {
-        case CV_8UC4: { // BGRA
-            QImage image(inMat.data, inMat.cols, inMat.rows, static_cast<int>(inMat.step), QImage::Format_ARGB32);
-            return image.copy();
-        }
-        case CV_8UC3: { // BGR
-            QImage image(inMat.data, inMat.cols, inMat.rows, static_cast<int>(inMat.step), QImage::Format_RGB888);
-            return image.rgbSwapped().copy();
-        }
-        case CV_8UC1: { // Grayscale
-             #if QT_VERSION >= QT_VERSION_CHECK(5, 15, 0)
-                 QImage image(inMat.data, inMat.cols, inMat.rows, static_cast<int>(inMat.step), QImage::Format_Grayscale8);
-             #else
-                 static QVector<QRgb> sColorTable; // Fallback for older Qt
-                 if (sColorTable.isEmpty()) {
-                     sColorTable.resize(256);
-                     for (int i = 0; i < 256; ++i) sColorTable[i] = qRgb(i, i, i);
-                 }
-                 QImage image(inMat.data, inMat.cols, inMat.rows, static_cast<int>(inMat.step), QImage::Format_Indexed8);
-                 image.setColorTable(sColorTable);
-            #endif
-            return image.copy();
-        }
-        default:
-            qWarning("cvMatToQImage() - Unsupported CV type: %d for cam %d", inMat.type(), m_cameraIndex);
-            break;
+    if (mat.empty()) return QImage();
+
+    switch (mat.type()) {
+    case CV_8UC4: { // 4-channel BGRA (OpenCV default ordering: B,G,R,A)
+        // QImage::Format_ARGB32 is stored in memory as BGRA on little-endian systems,
+        // so this mapping is correct and avoids expensive per-pixel conversions.
+        QImage img(mat.data, mat.cols, mat.rows, static_cast<int>(mat.step),
+                   QImage::Format_ARGB32);
+        return img.copy(); // deep copy because mat.data will be freed/unmapped soon
     }
-    return QImage();
+
+    case CV_8UC3: { // 3-channel BGR
+        // QImage::Format_RGB888 expects R,G,B order. OpenCV is B,G,R -> use rgbSwapped().
+        QImage img(mat.data, mat.cols, mat.rows, static_cast<int>(mat.step),
+                   QImage::Format_RGB888);
+        QImage swapped = img.rgbSwapped(); // Creates the correct RGB ordering
+        return swapped.copy();
+    }
+
+    case CV_8UC1: { // Grayscale
+        QImage img(mat.data, mat.cols, mat.rows, static_cast<int>(mat.step),
+                   QImage::Format_Grayscale8);
+        return img.copy();
+    }
+
+    default:
+        qWarning() << "cvMatToQImage: Unsupported cv::Mat type:" << mat.type();
+        return QImage();
+    }
 }

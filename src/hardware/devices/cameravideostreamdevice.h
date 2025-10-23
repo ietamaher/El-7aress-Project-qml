@@ -34,9 +34,9 @@
 #include <opencv2/imgproc.hpp> // For cv::Mat conversions if needed in header
 
 // --- Project Includes ---
-#include "osdrenderer.h" // For OperationalMode, MotionMode, FireMode, ReticleType
-#include "../utils/inference.h" // For Detection struct used in FrameData
-#include "../models/systemstatemodel.h" // For SystemStateData used in onSystemStateChanged slot
+//#include "osdrenderer.h" // For OperationalMode, MotionMode, FireMode, ReticleType
+#include "utils/inference.h" // For Detection struct used in FrameData
+#include "models/domain/systemstatemodel.h" // For SystemStateData used in onSystemStateChanged slot
 
 // --- Data Structure Definition ---
 
@@ -82,9 +82,13 @@ struct FrameData {
 
 
     bool leadAngleActive = false; // Indicates if lead angle calculation is active
-
+    LeadAngleStatus leadAngleStatus;
     int reticleAimpointImageX_px;
     int reticleAimpointImageY_px;
+
+    // Optional but helpful:
+    float leadAngleOffsetAz_deg;
+    float leadAngleOffsetEl_deg;
 
     // Pass pre-formatted status texts
     QString leadStatusText;
@@ -283,6 +287,11 @@ private:
     int m_currentAcquisitionBoxW_px; // Width of the acquisition box in pixels
     int m_currentAcquisitionBoxH_px; // Height of the acquisition box in pixels
     bool m_currentActiveCameraIsDay; // Flag indicating if the active camera is a day camera
+
+    LeadAngleStatus m_currentLeadAngleStatus;  // ⭐ ADD
+    float m_currentLeadAngleOffsetAz;          // ⭐ ADD
+    float m_currentLeadAngleOffsetEl;
+
     FireMode m_fireMode;
     ReticleType m_reticleType;
     QColor m_colorStyle;

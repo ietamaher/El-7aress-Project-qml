@@ -8,32 +8,27 @@ ReticleMenuController::ReticleMenuController(QObject *parent)
     : QObject(parent)
     , m_viewModel(nullptr)
     , m_osdViewModel(nullptr)
-    , m_originalReticleType(ReticleType::Basic)
+    , m_originalReticleType(ReticleType::CircleDotReticle)
 {
 }
 
 void ReticleMenuController::initialize()
 {
-    // Get the RETICLE menu's ViewModel specifically by name
-    m_viewModel = ServiceManager::instance()->get<MenuViewModel>(QString("ReticleMenuViewModel"));
-    m_osdViewModel = ServiceManager::instance()->get<OsdViewModel>();
-
     Q_ASSERT(m_viewModel);
     Q_ASSERT(m_osdViewModel);
+    Q_ASSERT(m_stateModel);
 
     connect(m_viewModel, &MenuViewModel::optionSelected,
             this, &ReticleMenuController::handleMenuOptionSelected);
 
-    m_stateModel = ServiceManager::instance()->get<SystemStateModel>();
-    if (m_stateModel) {
-        // Connect to color changes
-        connect(m_stateModel, &SystemStateModel::colorStyleChanged,
-                this, &ReticleMenuController::onColorStyleChanged);
+    // Connect to color changes
+    connect(m_stateModel, &SystemStateModel::colorStyleChanged,
+            this, &ReticleMenuController::onColorStyleChanged);
 
-        // Set initial color
-        const auto& data = m_stateModel->data();
-        m_viewModel->setAccentColor(data.colorStyle);
-    }
+    // Set initial color
+    const auto& data = m_stateModel->data();
+    m_viewModel->setAccentColor(data.colorStyle);
+
 }
 
 QStringList ReticleMenuController::buildReticleOptions() const
@@ -51,23 +46,23 @@ QStringList ReticleMenuController::buildReticleOptions() const
 QString ReticleMenuController::reticleTypeToString(ReticleType type) const
 {
     switch(type) {
-    case ReticleType::Basic: return "Basic";
+    case ReticleType::CircleDotReticle: return "Circle-Dot Reticle";
     case ReticleType::BoxCrosshair: return "Box Crosshair";
-    case ReticleType::StandardCrosshair: return "Standard Crosshair";
-    case ReticleType::PrecisionCrosshair: return "Precision Crosshair";
-    case ReticleType::MilDot: return "Mil-Dot";
+    case ReticleType::TacticalCrosshair: return "Tactical Crosshair";
+    case ReticleType::CCIPFireControl: return "CCIP Fire Control";
+    case ReticleType::MilDot: return "Mil-Dot Ranging";
     default: return "Unknown";
     }
 }
 
 ReticleType ReticleMenuController::stringToReticleType(const QString& str) const
 {
-    if (str == "Basic") return ReticleType::Basic;
+    if (str == "Circle-Dot Reticle") return ReticleType::CircleDotReticle;
     if (str == "Box Crosshair") return ReticleType::BoxCrosshair;
-    if (str == "Standard Crosshair") return ReticleType::StandardCrosshair;
-    if (str == "Precision Crosshair") return ReticleType::PrecisionCrosshair;
-    if (str == "Mil-Dot") return ReticleType::MilDot;
-    return ReticleType::Basic;
+    if (str == "Tactical Crosshair") return ReticleType::TacticalCrosshair;
+    if (str == "CCIP Fire Control") return ReticleType::CCIPFireControl;
+    if (str == "Mil-Dot Ranging") return ReticleType::MilDot;
+    return ReticleType::CircleDotReticle;
 }
 
 void ReticleMenuController::show()
@@ -167,4 +162,19 @@ void ReticleMenuController::onColorStyleChanged(const QColor& color)
     if (m_viewModel) {
         m_viewModel->setAccentColor(color);
     }
+}
+
+void ReticleMenuController::setViewModel(MenuViewModel* viewModel)
+{
+    m_viewModel = viewModel;
+}
+
+void ReticleMenuController::setOsdViewModel(OsdViewModel* osdViewModel)
+{
+    m_osdViewModel = osdViewModel;
+}
+
+void ReticleMenuController::setStateModel(SystemStateModel* stateModel)
+{
+    m_stateModel = stateModel;
 }
